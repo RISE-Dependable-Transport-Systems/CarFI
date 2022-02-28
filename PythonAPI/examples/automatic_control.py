@@ -718,6 +718,7 @@ def game_loop(args):
 
         # Set the agent destination
         spawn_points = world.map.get_spawn_points()
+        
         destination = random.choice(spawn_points).location
         agent.set_destination(destination)
 
@@ -812,7 +813,7 @@ def main():
         "-a", "--agent", type=str,
         choices=["Behavior", "Basic"],
         help="select which agent to run",
-        default="Behavior")
+        default="Basic")
     argparser.add_argument(
         '-b', '--behavior', type=str,
         choices=["cautious", "normal", "aggressive"],

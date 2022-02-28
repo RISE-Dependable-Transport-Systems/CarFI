@@ -48,7 +48,7 @@ def main():
 
         # Now let's filter all the blueprints of type 'vehicle' and choose one
         # at random.
-        bp = random.choice(blueprint_library.filter('vehicle'))
+        bp = blueprint_library.filter('vehicle')[0]  #random.choice(blueprint_library.filter('vehicle'))
 
         # A blueprint contains the list of attributes that define a vehicle's
         # instance, we can read them and modify some of them. For instance,
@@ -59,7 +59,7 @@ def main():
 
         # Now we need to give an initial transform to the vehicle. We choose a
         # random transform from the list of recommended spawn points of the map.
-        transform = random.choice(world.get_map().get_spawn_points())
+        transform = world.get_map().get_spawn_points()[0] #random.choice(world.get_map().get_spawn_points())
 
         # So let's tell the world to spawn the vehicle.
         vehicle = world.spawn_actor(bp, transform)
@@ -77,7 +77,7 @@ def main():
 
         # Let's add now a "depth" camera attached to the vehicle. Note that the
         # transform we give here is now relative to the vehicle.
-        camera_bp = blueprint_library.find('sensor.camera.depth')
+        camera_bp = blueprint_library.find('sensor.camera.frgb')
         camera_transform = carla.Transform(carla.Location(x=1.5, z=2.4))
         camera = world.spawn_actor(camera_bp, camera_transform, attach_to=vehicle)
         actor_list.append(camera)
@@ -98,20 +98,20 @@ def main():
 
         # But the city now is probably quite empty, let's add a few more
         # vehicles.
-        transform.location += carla.Location(x=40, y=-3.2)
-        transform.rotation.yaw = -180.0
-        for _ in range(0, 10):
-            transform.location.x += 8.0
+        #transform.location += carla.Location(x=40, y=-3.2)
+        #transform.rotation.yaw = -180.0
+        #for _ in range(0, 10):
+        #    transform.location.x += 8.0
 
-            bp = random.choice(blueprint_library.filter('vehicle'))
+        #    bp = random.choice(blueprint_library.filter('vehicle'))
 
             # This time we are using try_spawn_actor. If the spot is already
             # occupied by another object, the function will return None.
-            npc = world.try_spawn_actor(bp, transform)
-            if npc is not None:
-                actor_list.append(npc)
-                npc.set_autopilot(True)
-                print('created %s' % npc.type_id)
+         #   npc = world.try_spawn_actor(bp, transform)
+          #  if npc is not None:
+           #     actor_list.append(npc)
+            #    npc.set_autopilot(True)
+             #   print('created %s' % npc.type_id)
 
         time.sleep(5)
 
