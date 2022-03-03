@@ -14,21 +14,18 @@
 
 /// A sensor that captures images from the scene.
 UCLASS()
-class CARLA_API AFaultySceneCaptureCamera : public AShaderBasedSensor
-{
+class CARLA_API AFaultySceneCaptureCamera : public AShaderBasedSensor {
   GENERATED_BODY()
 
 public:
-
   static FActorDefinition GetSensorDefinition();
-
+  void Set(const FActorDescription &ActorDescription) override;
   AFaultySceneCaptureCamera(const FObjectInitializer &ObjectInitializer);
 
 protected:
+  void PostPhysTick(UWorld *World, ELevelTick TickType,
+                    float DeltaSeconds) override;
 
-  void PostPhysTick(UWorld *World, ELevelTick TickType, float DeltaSeconds) override;
-
-
-  
-
+private:
+  float faultyPixelPercentage;
 };

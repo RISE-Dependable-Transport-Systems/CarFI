@@ -35,8 +35,8 @@ def main():
         # First of all, we need to create the client that will send the requests
         # to the simulator. Here we'll assume the simulator is accepting
         # requests in the localhost at port 2000.
-        client = carla.Client('localhost', 2000)
-        client.set_timeout(2.0)
+        client = carla.Client('localhost', 30000)
+        client.set_timeout(10.0)
 
         # Once we have a client we can retrieve the world that is currently
         # running.
@@ -73,21 +73,28 @@ def main():
         print('created %s' % vehicle.type_id)
 
         # Let's put the vehicle to drive around.
-        vehicle.set_autopilot(True)
+        #vehicle.set_autopilot(True)
 
         # Let's add now a "depth" camera attached to the vehicle. Note that the
         # transform we give here is now relative to the vehicle.
         camera_bp = blueprint_library.find('sensor.camera.frgb')
+        camera_bp.set_attribute('percentage_faulty_pixels', '10')
+        print('got camera %s' % camera_bp)
         camera_transform = carla.Transform(carla.Location(x=1.5, z=2.4))
         camera = world.spawn_actor(camera_bp, camera_transform, attach_to=vehicle)
         actor_list.append(camera)
         print('created %s' % camera.type_id)
 
+
+        cc = carla.ColorConverter.LogarithmicDepth
+        def cam(img):
+            image.save_to_disk('%06d.png' % image.frame,cc)
+            print('image saved')
+            print(img)
         # Now we register the function that will be called each time the sensor
         # receives an image. In this example we are saving the image to disk
         # converting the pixels to gray-scale.
-        cc = carla.ColorConverter.LogarithmicDepth
-        camera.listen(lambda image: image.save_to_disk('_out/%06d.png' % image.frame, cc))
+        camera.listen(lambda image: cam(img))
 
         # Oh wait, I don't like the location we gave to the vehicle, I'm going
         # to move it a bit forward.
@@ -115,10 +122,11 @@ def main():
 
         time.sleep(5)
 
+        print('done.')
     finally:
 
         print('destroying actors')
-        camera.destroy()
+        #camera.destroy()
         client.apply_batch([carla.command.DestroyActor(x) for x in actor_list])
         print('done.')
 

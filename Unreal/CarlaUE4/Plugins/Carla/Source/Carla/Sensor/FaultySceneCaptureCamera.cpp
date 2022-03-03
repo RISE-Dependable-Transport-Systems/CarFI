@@ -4,33 +4,44 @@
 // This work is licensed under the terms of the MIT license.
 // For a copy, see <https://opensource.org/licenses/MIT>.
 
-#include "Carla.h"
 #include "Carla/Sensor/FaultySceneCaptureCamera.h"
-#include "stdint.h"
+#include "Carla.h"
 #include "Runtime/RenderCore/Public/RenderingThread.h"
+#include "stdint.h"
 
-FActorDefinition AFaultySceneCaptureCamera::GetSensorDefinition()
-{
+FActorDefinition AFaultySceneCaptureCamera::GetSensorDefinition() {
   constexpr bool bEnableModifyingPostProcessEffects = true;
-  return UActorBlueprintFunctionLibrary::MakeCameraDefinition(
-      TEXT("frgb"),
-      bEnableModifyingPostProcessEffects);
+
+  FActorVariation perFaultyPixels;
+  perFaultyPixels.Id = TEXT("percentage_faulty_pixels");
+  perFaultyPixels.Type = EActorAttributeType::Float;
+  perFaultyPixels.RecommendedValues = {TEXT("0")};
+  perFaultyPixels.bRestrictToRecommended = false;
+
+  auto Definition = UActorBlueprintFunctionLibrary::MakeCameraDefinition(
+      TEXT("frgb"), bEnableModifyingPostProcessEffects);
+  Definition.Variations.Append({perFaultyPixels});
+  return Definition;
 }
 
-AFaultySceneCaptureCamera::AFaultySceneCaptureCamera(const FObjectInitializer &ObjectInitializer)
-  : Super(ObjectInitializer)
-{
-  AddPostProcessingMaterial(
-      TEXT("Material'/Carla/PostProcessingMaterials/PhysicLensDistortion.PhysicLensDistortion'"));
-  
+void AFaultySceneCaptureCamera::Set(const FActorDescription &Description) {
+  Super::Set(Description);
+  faultyPixelPercentage =
+      UActorBlueprintFunctionLibrary::RetrieveActorAttributeToFloat(
+          "percentage_faulty_pixels", Description.Variations, 1.0f);
+}
+AFaultySceneCaptureCamera::AFaultySceneCaptureCamera(
+    const FObjectInitializer &ObjectInitializer)
+    : Super(ObjectInitializer) {
+  AddPostProcessingMaterial(TEXT("Material'/Carla/PostProcessingMaterials/"
+                                 "PhysicLensDistortion.PhysicLensDistortion'"));
 }
 
-void AFaultySceneCaptureCamera::PostPhysTick(UWorld *World, ELevelTick TickType, float DeltaSeconds)
-{
+void AFaultySceneCaptureCamera::PostPhysTick(UWorld *World, ELevelTick TickType,
+                                             float DeltaSeconds) {
   TRACE_CPUPROFILER_EVENT_SCOPE(ASceneCaptureCamera::PostPhysTick);
   check(CaptureRenderTarget != nullptr);
-  if (!HasActorBegunPlay() || IsPendingKill())
-  {
+  if (!HasActorBegunPlay() || IsPendingKill()) {
     return;
   }
 
@@ -38,23 +49,26 @@ void AFaultySceneCaptureCamera::PostPhysTick(UWorld *World, ELevelTick TickType,
   EnqueueRenderSceneImmediate();
   WaitForRenderThreadToFinsih();
 
-  //Super (ASceneCaptureSensor) Capture the Scene in a (UTextureRenderTarget2D) CaptureRenderTarge from the CaptureComponent2D
+  // Super (ASceneCaptureSensor) Capture the Scene in a (UTextureRenderTarget2D)
+  // CaptureRenderTarge from the CaptureComponent2D
   /** Read the image **/
   TArray<FColor> RawImage;
-  this->ReadPixels(RawImage);  
+  this->ReadPixels(RawImage);
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
   std::default_random_engine generator(seed);
-  std::normal_distribution<float> distribution (0.0,1.0);
- 
-  for (int32 Index = 0; Index != RawImage.Num(); ++Index)
-  {
-     FColor Pixel = RawImage[Index];
-     float Noise = distribution(generator);
-     uint8_t NR = Pixel.R * Noise;
-     uint8_t NG = Pixel.G * Noise;
-     uint8_t NB = Pixel.B * Noise;
-     RawImage[Index] = FColor(NR, NG, NB, Pixel.A);
-  } 
-  
+
+  int nbrOfPixelsToAffect = faultyPixelPercentage * RawImage.Num() / 100;
+  // std::normal_distribution<int> distribution(0, RawImage.Num() -
+  // nbrOfPixelsToAffect);
+  int startIndex = 10; // distribution(generator);
+  for (int32 Index = startIndex; Index != startIndex + nbrOfPixelsToAffect;
+       ++Index) {
+    FColor Pixel = RawImage[Index];
+    uint8_t NR = Pixel.R * 0;
+    uint8_t NG = Pixel.G * 0;
+    uint8_t NB = Pixel.B * 0;
+    RawImage[Index] = FColor(NR, NG, NB, Pixel.A);
+  }
+
   FPixelReader::SendFaultyPixelsInRenderThread(*this, RawImage, false);
 }
