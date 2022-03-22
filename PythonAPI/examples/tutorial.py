@@ -35,7 +35,7 @@ def main():
         # First of all, we need to create the client that will send the requests
         # to the simulator. Here we'll assume the simulator is accepting
         # requests in the localhost at port 2000.
-        client = carla.Client('localhost', 30000)
+        client = carla.Client('localhost', 2000)
         client.set_timeout(10.0)
 
         # Once we have a client we can retrieve the world that is currently
@@ -78,7 +78,10 @@ def main():
         # Let's add now a "depth" camera attached to the vehicle. Note that the
         # transform we give here is now relative to the vehicle.
         camera_bp = blueprint_library.find('sensor.camera.frgb')
-        camera_bp.set_attribute('percentage_faulty_pixels', '10')
+        camera_bp.set_attribute('fault_type','BrightnessAndContrast')
+        # Gaussian :: seed:12345\ndistMin:0.0\ndistMax:1.0 // Seed - arandom number, distMin and Max -  a float value 
+        # BrightnessContrast :: alpha:1.0\nbeta:5  // alpha - a floating value (0,1) and beta - an integer // alpha * f(x) + beta
+        camera_bp.set_attribute('faulty_parameters', 'alpha:0.2\nbeta:15')
         print('got camera %s' % camera_bp)
         camera_transform = carla.Transform(carla.Location(x=1.5, z=2.4))
         camera = world.spawn_actor(camera_bp, camera_transform, attach_to=vehicle)
@@ -87,14 +90,14 @@ def main():
 
 
         cc = carla.ColorConverter.LogarithmicDepth
-        def cam(img):
-            image.save_to_disk('%06d.png' % image.frame,cc)
+        def cam(image):
+            image.save_to_disk('_out/%06d.png' % image.frame,cc)
             print('image saved')
-            print(img)
+            print(image)
         # Now we register the function that will be called each time the sensor
         # receives an image. In this example we are saving the image to disk
         # converting the pixels to gray-scale.
-        camera.listen(lambda image: cam(img))
+        camera.listen(lambda image: cam(image))
 
         # Oh wait, I don't like the location we gave to the vehicle, I'm going
         # to move it a bit forward.

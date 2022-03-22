@@ -9,12 +9,14 @@
 #include "Carla/Actor/ActorDefinition.h"
 #include "Carla/Sensor/PixelReader.h"
 #include "Carla/Sensor/ShaderBasedSensor.h"
+#include "Fault.cpp"
 
 #include "FaultySceneCaptureCamera.generated.h"
 
 /// A sensor that captures images from the scene.
 UCLASS()
-class CARLA_API AFaultySceneCaptureCamera : public AShaderBasedSensor {
+class CARLA_API AFaultySceneCaptureCamera : public AShaderBasedSensor
+{
   GENERATED_BODY()
 
 public:
@@ -28,4 +30,8 @@ protected:
 
 private:
   float faultyPixelPercentage;
+  FString faultType;
+  FString faultyParameters;
+  FString faultyEventParameters;
+  std::unique_ptr<FFault> fault;
 };

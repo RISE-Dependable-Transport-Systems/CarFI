@@ -8,40 +8,100 @@
 #include "Carla.h"
 #include "Runtime/RenderCore/Public/RenderingThread.h"
 #include "stdint.h"
+#include "FaultGaussian.cpp"
+#include "FaultBrightnessContrast.cpp"
 
-FActorDefinition AFaultySceneCaptureCamera::GetSensorDefinition() {
+/*
+TODO: parse and use the parameters in the sensors
+TODO: event paramerts use time in ns and use GETEpisode().getGameTime() to trigger at given time periods.
+TODO: refactor code to be included into set method for persistance.
+*/
+FActorDefinition AFaultySceneCaptureCamera::GetSensorDefinition()
+{
   constexpr bool bEnableModifyingPostProcessEffects = true;
 
-  FActorVariation perFaultyPixels;
-  perFaultyPixels.Id = TEXT("percentage_faulty_pixels");
-  perFaultyPixels.Type = EActorAttributeType::Float;
-  perFaultyPixels.RecommendedValues = {TEXT("0")};
-  perFaultyPixels.bRestrictToRecommended = false;
+  FActorVariation faultyParameters;
+  faultyParameters.Id = TEXT("faulty_parameters");
+  faultyParameters.Type = EActorAttributeType::String;
+  faultyParameters.RecommendedValues = {TEXT("newline seperated Parameter:value")};
+  faultyParameters.bRestrictToRecommended = false;
+
+  FActorVariation faultyEventParameters;
+  faultyEventParameters.Id = TEXT("faulty_parameters");
+  faultyEventParameters.Type = EActorAttributeType::String;
+  faultyEventParameters.RecommendedValues = {TEXT("newline seperated StartTime:TimeInNS")};
+  faultyEventParameters.bRestrictToRecommended = false;
+
+  FActorVariation faultType;
+  faultType.Id = TEXT("fault_type");
+  faultType.Type = EActorAttributeType::String;
+  faultType.RecommendedValues = {TEXT("None")};
+  faultType.bRestrictToRecommended = false;
 
   auto Definition = UActorBlueprintFunctionLibrary::MakeCameraDefinition(
       TEXT("frgb"), bEnableModifyingPostProcessEffects);
-  Definition.Variations.Append({perFaultyPixels});
+  Definition.Variations.Append({faultyParameters, faultType, faultyEventParameters});
   return Definition;
 }
 
-void AFaultySceneCaptureCamera::Set(const FActorDescription &Description) {
+void AFaultySceneCaptureCamera::Set(const FActorDescription &Description)
+{
   Super::Set(Description);
-  faultyPixelPercentage =
-      UActorBlueprintFunctionLibrary::RetrieveActorAttributeToFloat(
-          "percentage_faulty_pixels", Description.Variations, 1.0f);
+  faultyParameters =
+      UActorBlueprintFunctionLibrary::RetrieveActorAttributeToString(
+          "faulty_parameters", Description.Variations, FString(TEXT("None:None")));
+
+  faultyEventParameters =
+      UActorBlueprintFunctionLibrary::RetrieveActorAttributeToString(
+          "faulty_event_parameters", Description.Variations, FString(TEXT("None:None")));
+  faultType =
+      UActorBlueprintFunctionLibrary::RetrieveActorAttributeToString(
+          "fault_type", Description.Variations, FString(TEXT("None")));
+
+  /* Thoughts: This fuction is run on every tick. Creating a fault object every time might not be desierable.
+It might be a better idea to move the instantiation of the faults
+into the SET method and then use the instantiated object with the apply function here.*/
+  if (faultType.Equals(FString(TEXT("Gaussian"), ESearchCase::IgnoreCase)))
+  {
+    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, faultyParameters);
+    // std::cout<< "got faulty parameters " << faultyParameters << std::endl;
+    fault = std::make_unique<FaultGaussian>(faultyParameters);
+    /*FaultGaussian(this->Seed
+      //std::chrono::system_clock::now().time_since_epoch().count(),
+       0.0, 1.0);*/
+  }
+  if (faultType.Equals(FString(TEXT("BrightnessAndContrast"), ESearchCase::IgnoreCase)))
+  {
+    // alpha value [1.0-3.0] TODO: move this as a parameter
+    //  beta value [0-100]
+    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, faultyParameters);
+
+    fault = std::make_unique<FaultBrightnessAndContrast>(faultyParameters); // 1.0, 20);
+  }
+  else if (faultType.Equals(FString(TEXT("None"), ESearchCase::IgnoreCase)))
+  {
+    fault = std::make_unique<FaultNone>();
+  }else {
+      GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString(TEXT("Got invalid  fault type")));
+
+  
+  } 
 }
 AFaultySceneCaptureCamera::AFaultySceneCaptureCamera(
     const FObjectInitializer &ObjectInitializer)
-    : Super(ObjectInitializer) {
+    : Super(ObjectInitializer)
+{
   AddPostProcessingMaterial(TEXT("Material'/Carla/PostProcessingMaterials/"
                                  "PhysicLensDistortion.PhysicLensDistortion'"));
 }
 
 void AFaultySceneCaptureCamera::PostPhysTick(UWorld *World, ELevelTick TickType,
-                                             float DeltaSeconds) {
+                                             float DeltaSeconds)
+{
   TRACE_CPUPROFILER_EVENT_SCOPE(ASceneCaptureCamera::PostPhysTick);
   check(CaptureRenderTarget != nullptr);
-  if (!HasActorBegunPlay() || IsPendingKill()) {
+  if (!HasActorBegunPlay() || IsPendingKill())
+  {
     return;
   }
 
@@ -54,21 +114,23 @@ void AFaultySceneCaptureCamera::PostPhysTick(UWorld *World, ELevelTick TickType,
   /** Read the image **/
   TArray<FColor> RawImage;
   this->ReadPixels(RawImage);
-  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-  std::default_random_engine generator(seed);
+  
 
-  int nbrOfPixelsToAffect = faultyPixelPercentage * RawImage.Num() / 100;
-  // std::normal_distribution<int> distribution(0, RawImage.Num() -
-  // nbrOfPixelsToAffect);
-  int startIndex = 10; // distribution(generator);
-  for (int32 Index = startIndex; Index != startIndex + nbrOfPixelsToAffect;
-       ++Index) {
-    FColor Pixel = RawImage[Index];
-    uint8_t NR = Pixel.R * 0;
-    uint8_t NG = Pixel.G * 0;
-    uint8_t NB = Pixel.B * 0;
-    RawImage[Index] = FColor(NR, NG, NB, Pixel.A);
-  }
+  fault->apply(RawImage);
+
+  /*
+    int nbrOfPixelsToAffect = faultyPixelPercentage * RawImage.Num() / 100;
+    // std::normal_distribution<int> distribution(0, RawImage.Num() -
+    // nbrOfPixelsToAffect);
+    int startIndex = 10; // distribution(generator);
+    for (int32 Index = startIndex; Index != startIndex + nbrOfPixelsToAffect;
+         ++Index) {
+      FColor Pixel = RawImage[Index];
+      uint8_t NR = Pixel.R * 0;
+      uint8_t NG = Pixel.G * 0;
+      uint8_t NB = Pixel.B * 0;
+      RawImage[Index] = FColor(NR, NG, NB, Pixel.A);
+    }*/
 
   FPixelReader::SendFaultyPixelsInRenderThread(*this, RawImage, false);
 }
