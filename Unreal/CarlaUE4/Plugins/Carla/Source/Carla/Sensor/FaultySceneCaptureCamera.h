@@ -9,7 +9,6 @@
 #include "Carla/Actor/ActorDefinition.h"
 #include "Carla/Sensor/PixelReader.h"
 #include "Carla/Sensor/ShaderBasedSensor.h"
-#include "Fault.cpp"
 
 #include "FaultySceneCaptureCamera.generated.h"
 
@@ -33,5 +32,6 @@ private:
   FString faultType;
   FString faultyParameters;
   FString faultyEventParameters;
-  std::unique_ptr<FFault> fault;
+  std::shared_ptr<FFault> fault;
+  TUniquePtr<TImagePixelData<FColor>> pixelData;
 };

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Fault.cpp"
+#include "Fault.h"
 
 class FaultBlending : public FFault
 {
@@ -11,15 +11,18 @@ private:
 
 public:
     FaultBlending(double _alpha, unsigned int _beta, FString s) : FFault{s}, alpha(_alpha), beta(_beta) {}
-
-    void apply(TArray<FColor> &img)
+    carla::Buffer apply(carla::Buffer &&buf)
     {
 //TODO: Read image in carla
-        for (auto p : img)
+
+
+        for (auto p = buf.begin(); p < buf.end(); p++)
         {
-            p.R = (p.R * alpha) + beta;
-            p.G = (p.G * alpha) + beta;
-            p.B = (p.B * alpha) + beta;
+
+            *p = (*p * alpha) + beta;
+          
         }
+        return std::move(buf);
+
     }
 };

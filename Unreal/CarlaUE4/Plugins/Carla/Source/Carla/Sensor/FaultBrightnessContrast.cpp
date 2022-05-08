@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Fault.cpp"
+#include "Fault.h"
 
 class FaultBrightnessAndContrast : public FFault
 {
@@ -16,16 +16,19 @@ public:
         GEngine->AddOnScreenDebugMessage(2, 10.f, FColor::Red, FString::FromInt(beta));
     }
 
-    void apply(TArray<FColor> &img)
+    carla::Buffer apply(carla::Buffer &&buf)
+
     {
 
-        for (int32 Index = 0; Index != img.Num(); Index++)
+       
+
+        for (auto ptr = buf.begin(); ptr < buf.end(); ptr++)
         {
-            FColor Pixel = img[Index];
-            uint8_t NR = (Pixel.R * alpha) + beta;
-            uint8_t NG = (Pixel.G * alpha) + beta;
-            uint8_t NB = (Pixel.B * alpha) + beta;
-            img[Index] = FColor(NR, NG, NB, Pixel.A);
+            *ptr = (*ptr * alpha) + beta;
+           
         }
+        return std::move(buf);
+
+      
     }
 };

@@ -9,6 +9,7 @@
 #include "CoreGlobals.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Runtime/ImageWriteQueue/Public/ImagePixelData.h"
+#include "Carla/Sensor/Fault.h"
 
 #include <compiler/disable-ue4-macros.h>
 #include <carla/Buffer.h>
@@ -65,7 +66,7 @@ public:
   static void SendPixelsInRenderThread(TSensor &Sensor, bool use16BitFormat = false);
 
   template <typename TSensor>
-  static void SendFaultyPixelsInRenderThread(TSensor &Sensor,  TArray<FColor> &BitMap, bool use16BitFormat = false);
+  static void SendFaultyPixelsInRenderThread(TSensor &Sensor, std::shared_ptr<FFault>, bool use16BitFormat = false);
 
 private:
 
@@ -133,7 +134,7 @@ void FPixelReader::SendPixelsInRenderThread(TSensor &Sensor, bool use16BitFormat
 }
 
 template <typename TSensor>
-void FPixelReader::SendFaultyPixelsInRenderThread(TSensor &Sensor, TArray<FColor> &BitMap, bool use16BitFormat)
+void FPixelReader::SendFaultyPixelsInRenderThread(TSensor &Sensor, std::shared_ptr<FFault> f, bool use16BitFormat)
 {
   TRACE_CPUPROFILER_EVENT_SCOPE(FPixelReader::SendPixelsInRenderThread);
   check(Sensor.CaptureRenderTarget != nullptr);
@@ -151,7 +152,7 @@ void FPixelReader::SendFaultyPixelsInRenderThread(TSensor &Sensor, TArray<FColor
   // game-thread.
   ENQUEUE_RENDER_COMMAND(FWritePixels_SendPixelsInRenderThread)
   (
-    [&Sensor, Stream=Sensor.GetDataStream(Sensor), BitMap, use16BitFormat](auto &InRHICmdList) mutable
+    [f,&Sensor, Stream=Sensor.GetDataStream(Sensor), use16BitFormat](auto &InRHICmdList) mutable
     {
       TRACE_CPUPROFILER_EVENT_SCOPE_STR("FWritePixels_SendPixelsInRenderThread");
 
@@ -159,13 +160,17 @@ void FPixelReader::SendFaultyPixelsInRenderThread(TSensor &Sensor, TArray<FColor
       if (!Sensor.IsPendingKill())
       {
         auto Buffer = Stream.PopBufferFromPool();
-        Buffer.copy_from(carla::sensor::SensorRegistry::get<TSensor *>::type::header_offset, BitMap);
-        
+        WritePixelsToBuffer(
+            *Sensor.CaptureRenderTarget,
+            Buffer,
+            carla::sensor::SensorRegistry::get<TSensor *>::type::header_offset,
+            InRHICmdList, use16BitFormat);
+       
         if(Buffer.data())
         {
           SCOPE_CYCLE_COUNTER(STAT_CarlaSensorStreamSend);
           TRACE_CPUPROFILER_EVENT_SCOPE_STR("Stream Send");
-          Stream.Send(Sensor, std::move(Buffer));
+          Stream.Send(Sensor, std::move(f->apply(std::move(Buffer))));
         }
       }
     }

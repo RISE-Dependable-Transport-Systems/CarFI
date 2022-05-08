@@ -10,7 +10,7 @@
 #include "stdint.h"
 #include "FaultGaussian.cpp"
 #include "FaultBrightnessContrast.cpp"
-
+using namespace std::chrono;
 /*
 TODO: parse and use the parameters in the sensors
 TODO: event paramerts use time in ns and use GETEpisode().getGameTime() to trigger at given time periods.
@@ -65,7 +65,7 @@ into the SET method and then use the instantiated object with the apply function
   {
     GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, faultyParameters);
     // std::cout<< "got faulty parameters " << faultyParameters << std::endl;
-    fault = std::make_unique<FaultGaussian>(faultyParameters);
+    fault = std::make_shared<FaultGaussian>(faultyParameters);
     /*FaultGaussian(this->Seed
       //std::chrono::system_clock::now().time_since_epoch().count(),
        0.0, 1.0);*/
@@ -76,16 +76,16 @@ into the SET method and then use the instantiated object with the apply function
     //  beta value [0-100]
     GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, faultyParameters);
 
-    fault = std::make_unique<FaultBrightnessAndContrast>(faultyParameters); // 1.0, 20);
+    fault = std::make_shared<FaultBrightnessAndContrast>(faultyParameters); // 1.0, 20);
   }
   else if (faultType.Equals(FString(TEXT("None"), ESearchCase::IgnoreCase)))
   {
-    fault = std::make_unique<FaultNone>();
-  }else {
-      GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString(TEXT("Got invalid  fault type")));
-
-  
-  } 
+    fault = std::make_shared<FaultNone>();
+  }
+  else
+  {
+    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString(TEXT("Got invalid  fault type") + faultType));
+  }
 }
 AFaultySceneCaptureCamera::AFaultySceneCaptureCamera(
     const FObjectInitializer &ObjectInitializer)
@@ -98,39 +98,11 @@ AFaultySceneCaptureCamera::AFaultySceneCaptureCamera(
 void AFaultySceneCaptureCamera::PostPhysTick(UWorld *World, ELevelTick TickType,
                                              float DeltaSeconds)
 {
-  TRACE_CPUPROFILER_EVENT_SCOPE(ASceneCaptureCamera::PostPhysTick);
-  check(CaptureRenderTarget != nullptr);
-  if (!HasActorBegunPlay() || IsPendingKill())
-  {
-    return;
-  }
 
-  /// Immediate enqueues render commands of the scene at the current time.
-  EnqueueRenderSceneImmediate();
-  WaitForRenderThreadToFinsih();
 
-  // Super (ASceneCaptureSensor) Capture the Scene in a (UTextureRenderTarget2D)
-  // CaptureRenderTarge from the CaptureComponent2D
-  /** Read the image **/
-  TArray<FColor> RawImage;
-  this->ReadPixels(RawImage);
+
   
 
-  fault->apply(RawImage);
+  FPixelReader::SendFaultyPixelsInRenderThread(*this,fault);
 
-  /*
-    int nbrOfPixelsToAffect = faultyPixelPercentage * RawImage.Num() / 100;
-    // std::normal_distribution<int> distribution(0, RawImage.Num() -
-    // nbrOfPixelsToAffect);
-    int startIndex = 10; // distribution(generator);
-    for (int32 Index = startIndex; Index != startIndex + nbrOfPixelsToAffect;
-         ++Index) {
-      FColor Pixel = RawImage[Index];
-      uint8_t NR = Pixel.R * 0;
-      uint8_t NG = Pixel.G * 0;
-      uint8_t NB = Pixel.B * 0;
-      RawImage[Index] = FColor(NR, NG, NB, Pixel.A);
-    }*/
-
-  FPixelReader::SendFaultyPixelsInRenderThread(*this, RawImage, false);
 }

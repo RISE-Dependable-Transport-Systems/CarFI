@@ -1,7 +1,7 @@
 #ifndef FAULTGAUSSIAN_H_
 #define FAULTGAUSSIAN_H_
 
-#include "Fault.cpp"
+#include "Fault.h"
 
 class FaultGaussian : public FFault
 {
@@ -13,7 +13,7 @@ private:
 public:
     FaultGaussian(FString s) : FFault{s}, seed(FCString::Atoi(*param[FString(TEXT("seed"))])), distribution(FCString::Atof(*param[FString(TEXT("distMin"))]), FCString::Atof(*param[FString(TEXT("distMax"))])) {}
 
-    void apply(TArray<FColor> &img)
+    carla::Buffer apply(carla::Buffer &&buf)
     {
         std::default_random_engine generator(seed);
 
@@ -22,15 +22,12 @@ public:
 
         GEngine->AddOnScreenDebugMessage(8, 10.f, FColor::Red, param[FString(TEXT("distMax"))]);
 
-        for (int32 Index = 0; Index != img.Num(); Index++)
+        for (auto ptr = buf.begin(); ptr < buf.end(); ptr++)
         {
-            FColor Pixel = img[Index];
             float Noise = distribution(generator);
-            uint8_t NR = Pixel.R * Noise;
-            uint8_t NG = Pixel.G * Noise;
-            uint8_t NB = Pixel.B * Noise;
-            img[Index] = FColor(NR, NG, NB, Pixel.A);
+            *ptr = *ptr * Noise;
         }
+        return std::move(buf);
     }
 };
 

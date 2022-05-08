@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Fault.cpp"
+#include "Fault.h"
 
 class FaultNone : public FFault
 {
@@ -9,10 +9,9 @@ private:
 
 public:
     FaultNone() { }
-
-    void apply(TArray<FColor> &img)
+        carla::Buffer apply(carla::Buffer &&buf)
     {
-
+return std::move(buf);
        
     }
 };
