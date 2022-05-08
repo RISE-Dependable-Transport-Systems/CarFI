@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 # Copyright (c) 2019 Computer Vision Center (CVC) at the Universitat Autonoma de
 # Barcelona (UAB).
@@ -78,10 +77,12 @@ def main():
         # Let's add now a "depth" camera attached to the vehicle. Note that the
         # transform we give here is now relative to the vehicle.
         camera_bp = blueprint_library.find('sensor.camera.frgb')
-        camera_bp.set_attribute('fault_type','BrightnessAndContrast')
+        camera_bp.set_attribute('fault_type','Gaussian')
+        #camera_bp.set_attribute('fault_type','BrightnessAndContrast')
+        #camera_bp.set_attribute('faulty_parameters','alpha:0.7\nbeta:6')
         # Gaussian :: seed:12345\ndistMin:0.0\ndistMax:1.0 // Seed - arandom number, distMin and Max -  a float value 
-        # BrightnessContrast :: alpha:1.0\nbeta:5  // alpha - a floating value (0,1) and beta - an integer // alpha * f(x) + beta
-        camera_bp.set_attribute('faulty_parameters', 'alpha:0.2\nbeta:15')
+        # BrightnessAndContrast :: alpha:1.0\nbeta:5  // alpha - a floating value (0,1) and beta - an integer // alpha * f(x) + beta
+        camera_bp.set_attribute('faulty_parameters', 'seed:1235\ndistMin:1.0\ndistMax:0.0')
         print('got camera %s' % camera_bp)
         camera_transform = carla.Transform(carla.Location(x=1.5, z=2.4))
         camera = world.spawn_actor(camera_bp, camera_transform, attach_to=vehicle)
@@ -91,7 +92,7 @@ def main():
 
         cc = carla.ColorConverter.LogarithmicDepth
         def cam(image):
-            image.save_to_disk('_out/%06d.png' % image.frame,cc)
+            image.save_to_disk('_out/%06d.png' % image.frame)
             print('image saved')
             print(image)
         # Now we register the function that will be called each time the sensor
@@ -102,8 +103,8 @@ def main():
         # Oh wait, I don't like the location we gave to the vehicle, I'm going
         # to move it a bit forward.
         location = vehicle.get_location()
-        location.x += 40
-        vehicle.set_location(location)
+        #location.x += 40
+        #vehicle.set_location(location)
         print('moved vehicle to %s' % location)
 
         # But the city now is probably quite empty, let's add a few more
