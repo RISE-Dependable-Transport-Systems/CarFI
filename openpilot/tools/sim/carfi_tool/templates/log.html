@@ -1,0 +1,25 @@
+{% import "bootstrap/wtf.html" as wtf %}
+<div id="log" class="pt-5 pb-5">
+    <p>Events:</p>
+
+    <div style="height: 250px; overflow: auto;">
+        {{table}}
+    </div>
+    <div id="sim_state" class="pt-2">
+        {%if not done %}
+        <p>Experiment {{sim_round}} (out of {{total_rounds}}) is in progress.</p>
+        {% else %}
+        <p>Done with the experiments.</p>
+        {% endif %}
+    </div>
+    <form class="form-horizontal" method="POST" role="form">
+        {%if not done %}
+        {{form.home(disabled=True, class="btn btn-primary")}}
+        {{form.analysis(disabled=True, class="btn btn-primary")}}
+        {% else %}
+        {{form.home( class="btn btn-primary")}}
+        {{form.analysis( class="btn btn-primary")}}
+        {% endif %}
+
+    </form>
+</div>

@@ -1,0 +1,77 @@
+{% extends 'bootstrap/base.html' %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+
+
+{% block title %}
+CarFI - Analysis Results
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    body {
+
+        background-color: white;
+    }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="container">
+
+    <div class="row ">
+        <div class="col-md-12 col-lg-12 mx-lg-auto mx-md-auto">
+
+            <h1 class="pt-5 pb-5">Analysis Results</h1>
+
+            <form method="POST" role="form">
+                <div class="container">
+                    <div class="row ">
+                        <div class="col-lg-7 ">
+                            {{wtf.form_field(form.result, form_type="horizontal", horizontal_columns=('lg', 3, 9))}}
+                        </div>
+                        <div class="col-lg-2 ">
+                            {{wtf.form_field(form.show)}}
+                        </div>
+                    </div>
+                    <div class="row">
+                        {% for image_batch in small_images|batch(2) %}
+                        {% if image_batch|length==2 %}
+                        <div class="col-md-6">
+
+                            <img src="{{url_for('charts', id=image_batch[0] )}}" height="350px" />
+                        </div>
+                        <div class="col-md-6">
+
+                            <img src="{{url_for('charts', id=image_batch[1] )}}" height="350px" />
+
+                        </div>
+                        {% else %}
+                        <div class="col-md-12">
+
+                            <img src="{{url_for('charts', id=image_batch[0] )}}" width="100%" />
+                        </div>
+                        {% endif %}
+
+                        {% endfor %}
+                        {% for image in large_images %}
+                        <div class="col-md-12">
+
+                            <img src="{{url_for('charts', id=image )}}" width="100%" />
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="row pt-5">
+                        <div class="col ">
+                            {{wtf.form_field(form.home, form_type="basic")}}
+                            {{wtf.form_field(form.download, form_type="basic")}}
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

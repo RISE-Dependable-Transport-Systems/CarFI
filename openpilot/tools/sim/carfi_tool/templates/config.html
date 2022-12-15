@@ -1,0 +1,59 @@
+{% extends 'bootstrap/base.html' %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+
+
+{% block title %}
+CarFI - Campaign Settings
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    body {
+
+        background-color: white;
+    }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="container">
+
+    <div class="row">
+        <div class="col-md-10 col-lg-8 mx-lg-auto mx-md-auto">
+            <h1 class="pt-5 pb-5">Campaign Settings </h1>
+
+
+            <!--
+                {{ wtf.quick_form(form, form_type="horizontal", horizontal_columns=('lg', 5, 5)) }}
+            -->
+
+
+
+            <form class="form-horizontal" method="POST" role="form">
+
+                {% for item in form %}
+                {% if 'next' == item.id or 'back' == item.id or 'save' == item.id %}
+                <span>
+                    {{ wtf.form_field(item, form_type="basic")}}
+                </span>
+                {% else %}
+                <div class="control-group">
+
+                    {{wtf.form_field(item, form_type="horizontal", horizontal_columns=('lg', 5, 5))}}
+                </div>
+                {% endif %}
+                {% endfor %}
+            </form>
+
+
+
+
+
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}
